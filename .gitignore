@@ -1,0 +1,15 @@
+# Local reference material and credentials; backend/.gitignore cannot cover siblings.
+cadencedata/
+.tmp/
+ffmpeg/
+
+# Local environments and generated artifacts.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+dist/
+*.log

@@ -1,4 +1,4 @@
-const BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '')
+const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const sessionUpdates = new Map()
 
 function sessionExpired(token, force = false) {
@@ -25,7 +25,7 @@ async function request(path, { method = 'GET', body, token } = {}) {
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -50,7 +50,7 @@ async function uploadFile(path, { token, file, fields = {} }) {
   if (token) headers['Authorization'] = `Bearer ${token}`
   // no Content-Type here — the browser sets the multipart boundary automatically
 
-  const res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers, body: formData })
+  const res = await fetch(`${API_URL}${path}`, { method: 'POST', headers, body: formData })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     if (res.status === 401) sessionExpired(token)
@@ -61,7 +61,7 @@ async function uploadFile(path, { token, file, fields = {} }) {
 
 async function downloadFile(path, token) {
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
-  const res = await fetch(`${BASE_URL}${path}`, { headers })
+  const res = await fetch(`${API_URL}${path}`, { headers })
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     if (res.status === 401) sessionExpired(token)

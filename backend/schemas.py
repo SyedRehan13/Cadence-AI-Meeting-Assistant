@@ -7,7 +7,7 @@ class SignupRequest(BaseModel):
     name: str
     email: str
     password: str
-    role: str  # "pm" or "employee"
+    role: Literal["employee"] = "employee"
 
 
 class LoginRequest(BaseModel):
@@ -18,7 +18,7 @@ class LoginRequest(BaseModel):
 class GoogleAuthRequest(BaseModel):
     credential: str = Field(min_length=1, max_length=16384)
     nonce: str = Field(min_length=16, max_length=128)
-    role: Literal["pm", "employee"] = "employee"
+    role: Literal["employee"] = "employee"
     password: Optional[str] = Field(default=None, max_length=1024)
 
 

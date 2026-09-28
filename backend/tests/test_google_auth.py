@@ -76,22 +76,25 @@ class GoogleAuthTests(unittest.TestCase):
             "credential": credential or self.credential(), "nonce": self.nonce, **body,
         })
 
-    def test_creates_google_account_and_issues_working_session(self):
+    def test_new_google_account_rejects_pm_role(self):
         response = self.sign_in(role="pm")
-        self.assertEqual(response.status_code, 200, response.text)
-        data = response.json()
-        self.assertEqual(data["role"], "pm")
-        user = db.get_user_by_google_sub("google-user-123")
-        self.assertEqual(user["password_hash"], "")
-        me = self.client.get("/auth/me", headers={"Authorization": f"Bearer {data['access_token']}"})
-        self.assertEqual(me.json(), {"id": user["id"], "name": "Google Member", "role": "pm"})
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertIsNone(db.get_user_by_google_sub("google-user-123"))
+
+    def test_public_signup_cannot_self_assign_pm_role(self):
+        response = self.client.post("/auth/signup", json={
+            "name": "New Member", "email": "new-member@example.com",
+            "password": "new-member-password", "role": "pm",
+        })
+        self.assertEqual(response.status_code, 422, response.text)
+        self.assertIsNone(db.get_user_by_email("new-member@example.com"))
 
     def test_login_defaults_new_user_to_employee(self):
         self.assertEqual(self.sign_in().json()["role"], "employee")
 
     def test_returning_user_keeps_role_and_identity_when_email_changes(self):
         first = self.sign_in().json()
-        second = self.sign_in(self.credential(email="changed@gmail.com"), role="pm").json()
+        second = self.sign_in(self.credential(email="changed@gmail.com")).json()
         self.assertEqual(second["role"], "employee")
         self.assertEqual(auth.decode_token(first["access_token"])["sub"], auth.decode_token(second["access_token"])["sub"])
         with db.get_conn() as conn:
@@ -101,9 +104,9 @@ class GoogleAuthTests(unittest.TestCase):
         user_id = db.create_user("Existing Member", "MEMBER@gmail.com", self.password_hash, "employee")
         for password in (None, "wrong-password"):
             with self.subTest(password=password):
-                self.assertEqual(self.sign_in(password=password, role="pm").status_code, 409)
+                self.assertEqual(self.sign_in(password=password).status_code, 409)
                 self.assertIsNone(db.get_user_by_id(user_id)["google_sub"])
-        response = self.sign_in(password="existing-password", role="pm")
+        response = self.sign_in(password="existing-password")
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["role"], "employee")
         self.assertEqual(db.get_user_by_id(user_id)["google_sub"], "google-user-123")

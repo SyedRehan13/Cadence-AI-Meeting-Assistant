@@ -11,17 +11,18 @@ from schemas import (SignupRequest, LoginRequest, GoogleAuthRequest, TokenRespon
 from deps import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+PUBLIC_SIGNUP_ROLE = "employee"
 
 
 @router.post("/signup", response_model=TokenResponse)
 def signup(body: SignupRequest):
-    if body.role not in ("pm", "employee"):
-        raise HTTPException(status_code=400, detail="role must be 'pm' or 'employee'")
     if db.get_user_by_email(body.email):
         raise HTTPException(status_code=400, detail="An account with this email already exists")
-    user_id = db.create_user(body.name, body.email, auth.hash_password(body.password), body.role)
-    token = auth.create_token(user_id, body.role)
-    return TokenResponse(access_token=token, role=body.role, name=body.name)
+    user_id = db.create_user(
+        body.name, body.email, auth.hash_password(body.password), PUBLIC_SIGNUP_ROLE,
+    )
+    token = auth.create_token(user_id, PUBLIC_SIGNUP_ROLE)
+    return TokenResponse(access_token=token, role=PUBLIC_SIGNUP_ROLE, name=body.name)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -61,7 +62,9 @@ def google_login(body: GoogleAuthRequest):
             else:
                 name = claims.get("name")
                 name = name.strip() if isinstance(name, str) else ""
-                user = db.create_google_user(name or email.split("@")[0], email, subject, body.role)
+                user = db.create_google_user(
+                    name or email.split("@")[0], email, subject, PUBLIC_SIGNUP_ROLE,
+                )
         except db.INTEGRITY_ERRORS:
             raise HTTPException(status_code=503, detail="Your account changed during sign-in. Please try Google sign-in again.") from None
     # Roles come from the database for returning users, never from this request.
